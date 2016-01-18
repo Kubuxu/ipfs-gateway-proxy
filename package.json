@@ -1,0 +1,39 @@
+{
+  "name": "ipfs-gateway-proxy",
+  "version": "0.0.0",
+  "description": "Multi gateway proxy for ipfs",
+  "license": "MIT",
+  "repository": "Kubuxu/ipfs-gateway-proxy",
+  "author": {
+    "name": "Jakub Sztandera",
+    "email": "kubuxu@gmail.com",
+    "url": "ipfs.io/ipns/ipns.kubuxu.ovh"
+  },
+  "engines": {
+    "node": ">=0.10.0"
+  },
+  "scripts": {
+    "start": "node index.js",
+    "lint": "standard",
+    "test": "standard && ava"
+  },
+  "files": [
+    "index.js"
+  ],
+  "keywords": [
+    ""
+  ],
+  "dependencies": {
+    "http-proxy": "^1.12.0",
+    "node-cache": "^3.0.1"
+  },
+  "devDependencies": {
+    "standard": "^5.4.1",
+    "ava": "^0.9.1"
+  },
+  "standard": {
+    "ignore": [
+      "test.js"
+    ]
+  }
+}
