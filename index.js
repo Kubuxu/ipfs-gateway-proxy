@@ -1,5 +1,3 @@
-
-
 'use strict'
 
 var http = require('http')
@@ -31,11 +29,13 @@ var allowedCodes = {
 // /ipns/ - 1 minute TTL
 // this includes caching requests to non /ip(n|f)s/ where Host
 // header specifies /ipfs/${host}
-var cache = new require( "node-cache" )({
+// Only first two segments of req.url should be used for caching and cache feach.
+
+var cache = new (require('node-cache'))({
   useClones: false
 })
 
-function resolve(req, res) {
+function resolve (req, res) {
   var done = false
   var running = 0
   console.log('Got request.')
@@ -80,7 +80,6 @@ function resolve(req, res) {
 }
 
 http.createServer(function (req, res) {
-  if (req.url.match(/\/(ipfs)|(ipns)\//)) {
-
-  }
+  // Caching logic here
+  resolve(req, res)
 }).listen(8082)
