@@ -28,13 +28,6 @@ var ttls = {
   'ipns': 1 * 60
 }
 
-// TODO: Caching.
-// /ipfs/ - 60 minutes TTL
-// /ipns/ - 1 minute TTL
-// this includes caching requests to non /ip(n|f)s/ where Host
-// header specifies /ipfs/${host}
-// Only first two segments of req.url should be used for caching and cache feach.
-
 var cache = new (require('node-cache'))({
   useClones: false
 })
@@ -89,7 +82,7 @@ http.createServer(function (req, res) {
   if (mainSeg !== null) {
     mainSeg = mainSeg[0]
   } else if (req.headers.host !== null) {
-    mainSeg = '/ipns/' + req.headers.host
+    mainSeg = '/ipns/' + req.headers.host + '/'
   } else {
     res.write('Invalid request.')
     res.statusCode = 400
