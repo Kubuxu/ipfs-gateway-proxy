@@ -32,48 +32,66 @@ var cache = new (require('node-cache'))({
   useClones: false
 })
 
+// Returns the connection
+function check (target, req, cb) {
+  console.log('Checking', req.url, 'to:', target.host)
+  var request = http.request({
+    host: target.host,
+    port: target.port,
+    path: req.url,
+    headers: {
+      host: req.headers.host,
+      connection: 'keep-alive'
+    },
+    method: 'HEAD'
+  }, (res) => {
+    cb(null, res, request, target)
+  })
+  request.on('error', cb)
+  request.end()
+  return request
+}
+
 function resolve (req, res, mainSeg) {
   var done = false
-  var running = 0
+  var running = []
   console.log('Got request.')
   for (var i = 0; i < pool.length; i++) {
-    running++
-    console.log('Checking', req.url, 'to:', pool[i].host)
-    var head = http.request({
-      host: pool[i].host,
-      port: pool[i].port,
-      path: req.url,
-      headers: {
-        host: req.headers.host,
-        connection: 'keep-alive'
-      },
-      method: 'HEAD'
-    }, ((server, r) => {
-      running--
+    var headReq = check(pool[i], req, (err, r, request, target) => {
+      var index = running.indexOf(request)
+      if (index > -1) {
+        running.splice(index, 1)
+      }
       if (done) {
+        return
+      }
+      if (err) {
+        console.log('Error in', target, err)
         return
       }
       if (allowedCodes[r.statusCode]) {
         done = true
-        console.log('Sucess', req.url, 'at', server.host)
-        proxy.web(req, res, { target: server })
-        cache.set(mainSeg, server, ttls[mainSeg.match(/\/(ip.s)\//)[1]])
+        console.log('Sucess', req.url, 'at', target.host)
+        proxy.web(req, res, { target: target })
+        cache.set(mainSeg, target, ttls[mainSeg.match(/\/(ip.s)\//)[1]])
+        if (running.length > 0) {
+          console.log('Closing', running.length, 'still open requests.')
+        }
+        for (var j = 0; j < running.length; j++) {
+          running[j].abort()
+        };
       } else {
-        console.log('Failed', req.url, 'at', server.host, r.statusCode)
-        // Recheck `done` because of raceconditon
-        if (!done && running === 0) {
+        console.log('Failed', req.url, 'at', target.host, r.statusCode)
+        // Recheck `done` because of race conditon
+        if (!done && running.length === 0) {
           done = true
           res.write('Could not find it anywhere')
           res.statusCode = 400
           res.end()
         }
       }
-    }).bind(null, pool[i]))
-    head.on('error', ((server, e) => {
-      // There has to be error handler.
-      console.log('Error on: ', server.host, e.message)
-    }).bind(null, pool[i]))
-    head.end()
+    })
+    running.push(headReq)
   }
 }
 
