@@ -23,6 +23,10 @@ var allowedCodes = {
   302: true,
   304: true
 }
+var ttls = {
+  'ipfs': 60 * 60,
+  'ipns': 1 * 60
+}
 
 // TODO: Caching.
 // /ipfs/ - 60 minutes TTL
@@ -35,7 +39,7 @@ var cache = new (require('node-cache'))({
   useClones: false
 })
 
-function resolve (req, res) {
+function resolve (req, res, mainSeg) {
   var done = false
   var running = 0
   console.log('Got request.')
@@ -60,6 +64,7 @@ function resolve (req, res) {
         done = true
         console.log('Sucess', req.url, 'at', server.host)
         proxy.web(req, res, { target: server })
+        cache.set(mainSeg, server, ttls[mainSeg.match(/\/(ip.s)\//)[1]])
       } else {
         console.log('Failed', req.url, 'at', server.host, r.statusCode)
         // Recheck `done` because of raceconditon
@@ -80,6 +85,23 @@ function resolve (req, res) {
 }
 
 http.createServer(function (req, res) {
-  // Caching logic here
-  resolve(req, res)
+  var mainSeg = req.url.match(/\/(ip(n|f)s)\/..*?\//)
+  if (mainSeg !== null) {
+    mainSeg = mainSeg[0]
+  } else if (req.headers.host !== null) {
+    mainSeg = '/ipns/' + req.headers.host
+  } else {
+    res.write('Invalid request.')
+    res.statusCode = 400
+    res.end()
+    return
+  }
+
+  var target = cache.get(mainSeg)
+  if (target !== undefined) {
+    console.log('Cache hit', mainSeg)
+    proxy.web(req, res, { target: target })
+  } else {
+    resolve(req, res, mainSeg)
+  }
 }).listen(8082)
